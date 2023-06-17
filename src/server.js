@@ -1,12 +1,6 @@
 import express from 'express'
 import cors from 'cors'
-import sqlite3 from 'sqlite3'
-import { open } from 'sqlite'
-
-const database = await open({
-  filename: 'database.sqlite',
-  driver: sqlite3.Database
-})
+import { database } from './database/index.js'
 
 const server = express()
 
