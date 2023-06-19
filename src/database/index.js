@@ -1,16 +1,15 @@
 import sqlite3 from 'sqlite3'
 import { open } from 'sqlite'
 
-const [database, inMemoryDatabase] = await Promise.all([
-  open({
+const database =  open({
     filename: 'database.sqlite',
     driver: sqlite3.Database
-  }),
-  open({
+  })
+
+const inMemoryDatabase =  open({
     filename: ':memory:',
     driver: sqlite3.Database
   })
-])
 
 export {
   database,

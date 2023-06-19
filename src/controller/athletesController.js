@@ -13,7 +13,7 @@ export function athleteController (http) {
     response.json({ results })
   })
 
-  http.get('test/athletes', async (_, response) => {
+  http.get('/test/athletes', async (_, response) => {
     const results = await inMemoryAthlete.findAll()
 
     response.json({ results })
@@ -77,7 +77,7 @@ export function athleteController (http) {
     res.sendStatus(204)
   })
 
-  http.delete('test/athletes/:id', async (req, res) => {
+  http.delete('/test/athletes/:id', async (req, res) => {
     const { id } = req.params
   
     await inMemoryAthlete.remove(id)
