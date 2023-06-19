@@ -1,97 +1,83 @@
 import express from 'express'
 import cors from 'cors'
 import { database } from './database/index.js'
+import { athleteController } from './controller/athletesController.js'
 
 const server = express()
 
 server.use(cors())
 server.use(express.json())
 
-/** Athlete */
+athleteController(server)
 
-server.get('/athletes', async (req, res) => {
-  const results = await database.all('SELECT * FROM athlete')
+server.get('/clear-database', async (req, res) => {
+  await Promisse.all([
+    database.exec(`
+      DELETE FROM athlete;
+    `),
+    database.exec(`
+      DELETE FROM training;
+    `),
+    database.exec(`
+      DELETE FROM exercise;
+    `),
+    database.exec(`
+      DELETE FROM training_exercise;
+    `)
+  ])
 
-  res.json({ results })
+  res.send('cleared')
 })
 
-server.get('/athletes/:id', async (req, res) => {
-  const { id } = req.params
+server.get('/migrate', async (req, res) => {
+  const { migrated } = await database.get('SELECT * FROM migration')
 
-  const result = await database.get('SELECT * FROM athlete WHERE id = ? ', id)
+  if (migrated) return res.send("It was migrated")
 
-  res.json({ result })
-})
+  await database.run(`
+    CREATE TABLE IF NOT EXISTS migration (
+      migrated BOOLEAN
+    );
 
-server.post('/athletes', async (req, res) => {
-  const { name, email, phone, age, gender } = req.body
-  const paramns = {
-    $name: name,
-    $email: email,
-    $phone: phone,
-    $age: age,
-    $gender: gender
-  }
+    CREATE TABLE IF NOT EXISTS athlete (
+      id INTEGER PRIMARY KEY,
+      name TEXT,
+      email TEXT,
+      phone TEXT,
+      age INTEGER,
+      gender TEXT
+    );
+    
+    CREATE TABLE IF NOT EXISTS training (
+      id INTEGER PRIMARY KEY,
+      name TEXT,
+      athlete_id INTEGER,
+      observation TEXT,
+      FOREIGN KEY (athlete_id) REFERENCES athlete (id)
+    );
+    
+    CREATE TABLE IF NOT EXISTS exercise (
+      id INTEGER PRIMARY KEY,
+      name TEXT,
+      observation TEXT,
+      video TEXT
+    );
+    
+    CREATE TABLE IF NOT EXISTS training_exercise (
+      id INTEGER PRIMARY KEY,
+      training_id INTEGER,
+      exercise_id INTEGER,
+      num_sets INTEGER,
+      num_reps INTEGER,
+      rest_time INTEGER,
+      FOREIGN KEY (training_id) REFERENCES training (id),
+      FOREIGN KEY (exercise_id) REFERENCES exercise (id)
+    )
+  `),
 
-  const result = await database.get(`
-    INSERT INTO athlete 
-      (
-        name, 
-        email, 
-        phone, 
-        age, 
-        gender
-      ) 
-      VALUES (
-        $name, 
-        $email, 
-        $phone, 
-        $age, 
-        $gender
-      ) RETURNING *`,
-    paramns
-  )
+  database.run(`INSERT INTO migration VALUES (true)`)
 
-  res.json({ result })
-})
-
-server.put('/athletes/:id', async (req, res) => {
-  const { name, email, phone, age, gender } = req.body
-  const { id } = req.params
-
-  const paramns = {
-    $id: id,
-    $name: name,
-    $email: email,
-    $phone: phone,
-    $age: age,
-    $gender: gender
-  }
-
-  const result = await database.get(`
-      UPDATE
-        athlete
-      SET
-        name = $name,
-        email = $email,
-        phone = $phone,
-        age = $age,
-        gender = $gender
-      WHERE
-        id = $id RETURNING *
-    `,
-    paramns
-  )
-
-  res.json({ result })
-})
-
-server.delete('/athletes/:id', async (req, res) => {
-  const { id } = req.params
-
-  await database.run('DELETE FROM athlete WHERE id = ?', id)
-
-  res.sendStatus(204)
+  res.send('Migrated')
 })
 
 /** Training */
@@ -153,7 +139,6 @@ server.get('/trainings/:id', async (req, res) => {
 
 server.post('/trainings', async (req, res) => {
   const { name, observation, athlete_id, exercises } = req.body
-
 
   const trainingResult = await database.get(`
     INSERT INTO 
